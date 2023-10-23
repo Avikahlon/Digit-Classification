@@ -51,19 +51,27 @@ class NaiveBayes:
         Returns:
         feature_probs: Array of conditional probabilities for each feature and class.
         """
-        num_classes = len(np.unique(y_train))
+        self.classes = sorted(list(np.unique(y_train)))
+        self.num_classes = len(np.unique(y_train))
         num_features = x_train.shape[1]
-        feature_probs = np.zeros((num_classes, num_features)) # need to change the intialize
+        feature_probs = np.zeros((self.num_classes, num_features, 2)) # need to change the intialize
         "*** YOUR CODE HERE ***"
-       
-        for i in range(num_classes):
-            num_instances_in_class_i = np.sum(y_train == i)
-            for j in range(num_features):
-                pass
-                num_instances_with_feature_j = np.sum((y_train == i) & (x_train[:, j] == 1))
-                feature_probs[i, j] = num_instances_with_feature_j / num_instances_in_class_i
-                #feature_probs[i, j] = len(x_train[(y_train==i) & (x_train[:,j]==1)])/len(y_train[y_train==i])
-        return feature_probs
+
+        for feature in range(num_features):
+            feature_values = x_train[:, feature]
+            feature_params = {}
+            for class_label in np.unique(y_train):
+                samples_in_class = x_train[y_train == class_label]
+                mean = np.mean(samples_in_class[:, feature])
+                std = np.std(samples_in_class[:, feature])
+                feature_probs[class_label, feature, 0] = mean
+                feature_probs[class_label, feature, 1] = std
+
+
+        def get_feature_probs(feature_index):
+            return feature_probs[feature_index]
+
+        return get_feature_probs
 
 
     def train(self, x_train, y_train):
@@ -87,27 +95,25 @@ class NaiveBayes:
         Returns:
         predictions: Predicted class labels for test features.
         """
-        num_samples, num_features = x_test.shape
-        classes = sorted(list(np.unique(y_train)))
-        num_classes = len(self.class_probs)
+        num_samples = x_test.shape[0]
+        num_features = x_test.shape[1]
         predictions = np.zeros(num_samples)
         "*** YOUR CODE HERE ***"
-        for i, c in classes:
-            prior = np.log(self.calculate_class_prob[i])
-            posterior = np.sum(np.log(self.calculate_feature_probs()))
-            posterior = posterior + prior
-            predictions.append(posterior)
+        for i in range(num_samples):
+            posteriors = np.zeros(self.num_classes)
+
+            for c in range(self.num_classes):
+                posterior = np.log(self.class_probs[c])
+
+                for feature in range(x_test.shape[1]):
+                    mean, std = self.feature_probs[c, feature, 0], self.feature_probs[c, feature, 1]
+                    if std == 0:  # Handle the case of zero standard deviation
+                        continue
+                    likelihood = self._pdf(x_test[i, feature], mean, std)
+                    posterior += np.log(likelihood)
+
+                posteriors[c] = posterior
+
+            predictions[i] = np.argmax(posteriors)
 
         return predictions
-
-y_train = np.load("D:/ICT203/y_train.npy")
-X_train = np.load("D:/ICT203/x_train.npy") 
-X_train = X_train / 255
-X_train = X_train.reshape(len(X_train), 28*28)
-
-X_train[X_train >= 0.5] = 1
-X_train[X_train < 0.5] = 0    
-nb = NaiveBayes()
-#print(nb.calculate_class_probs(y_train))
-fb = nb.calculate_feature_probs(X_train, y_train)
-print(fb.shape)

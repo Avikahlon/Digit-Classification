@@ -21,7 +21,8 @@ class ALTDataLoader(Dataset):
         """
         self.x = np.load(os.path.join("./data", data_dir, 'x_{}.npy'.format(mode)))
         self.y = np.load(os.path.join("./data", data_dir, 'y_{}.npy'.format(mode)))
-        
+
+
     def __len__(self):
         """
         Get the length of the dataset.

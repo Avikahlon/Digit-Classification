@@ -3,7 +3,10 @@
 # ICT203 - Artificial Intelligence and Intelligent Agents
 # Murdoch University
 
-from argparse import ArgumentParser 
+from argparse import ArgumentParser
+
+import torch.optim
+
 from nb_data_loader import *
 from alt_data_loader import *
 from alt_model import ALTModel
@@ -38,16 +41,57 @@ if __name__ == "__main__":
   print("--------------------")
   print("classifier:\t" + args.classifier)
 
+
   if args.classifier == "nb":
     """
     choose naive bayes
     """
+    data = NBDataLoader(args.data_dir)
+    x_train = data.x_train / 255
+    x_train = x_train.reshape(len(x_train), 28 * 28)
+    x_test = data.x_test / 255
+    x_test = x_test.reshape(len(x_test), 28 * 28)
     nb = NaiveBayes()
+    nb.train(data.x_train, data.y_train)
+    predicted = nb.predict(data.x_test)
+    accuracy = (predicted == data.y_test)
+    print(accuracy)
+
   else:
     """
     choose the alternative model
     """
+    alt = ALTModel()
+    data = ALTDataLoader(args.data_dir, args.mode)
+    x = torch.tensor(data.x, dtype=torch.float32)
+    x = x / 255
+    x = x.reshape(len(x), 28 * 28)
+    y = torch.tensor(data.y, dtype=torch.float32)
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(alt.parameters(), lr=args.learning_rate)
+    #print(data.y.shape)
 
+    for epoch in range(args.epoch):
+      alt.train()
+      total_loss = 0
+      # print(model.hidden1.weight)
+      for i in range(0, len(x), args.batch_size):
+        optimizer.zero_grad()
+        Xbatch = x[i:i + args.batch_size]
+        y_pred = alt(Xbatch)
+        ybatch = y[i:i + args.batch_size]
+        loss = loss_fn(y_pred, ybatch.long())
+        total_loss += loss
+        loss.backward()
+        optimizer.step()
+      print(f'Finished epoch {epoch}, latest loss {total_loss}')
+
+    y_pred = alt(x)
+    y_predicted_labels = [torch.argmax(i) for i in y_pred]
+    y_predicted_labels = torch.tensor(y_predicted_labels)
+    # print(y_predicted_labels.size(), y_train.size())
+    accuracy = (y_predicted_labels == y).float().mean()
+    print(f"Accuracy {accuracy * 100}")
 
 
      
