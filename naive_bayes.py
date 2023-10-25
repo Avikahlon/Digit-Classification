@@ -5,7 +5,8 @@
 
 import numpy as np
 from tqdm import tqdm
-import icecream as ic
+from multiprocessing import Pool
+
 
 class NaiveBayes:
     def __init__(self, smoothing_factor=1.0):
@@ -15,6 +16,8 @@ class NaiveBayes:
         2. class_probs: the prior probabilities for each class.
         3. feature_probs: the conditional probabilities for each feature given the class.
         """
+        self.classes = None
+        self.num_classes = None
         self.class_probs = None
         self.feature_probs = None
         self.smoothing_factor = smoothing_factor
@@ -29,16 +32,17 @@ class NaiveBayes:
         Returns:
         class_probs: Array of prior probabilities for each class.
         """
-        num_classes = len(np.unique(y_train))
-        classes = sorted(list(np.unique(y_train)))
-        class_probs = np.zeros(num_classes)
+        self.num_classes = len(np.unique(y_train))
+        total_samples = len(y_train)
+        classes, counts = np.unique(y_train, return_counts=True)
+        class_probs = []
+
         "*** YOUR CODE HERE ***"
+
         for i in classes:
-            prob = len(y_train[y_train==i])/len(y_train)
-            class_probs[i] = prob
-
+            class_count = np.sum(y_train == i)
+            class_probs.append(class_count + self.smoothing_factor/total_samples + self.smoothing_factor)
         return class_probs
-
 
     def calculate_feature_probs(self, x_train, y_train):
         """
@@ -52,27 +56,21 @@ class NaiveBayes:
         feature_probs: Array of conditional probabilities for each feature and class.
         """
         self.classes = sorted(list(np.unique(y_train)))
-        self.num_classes = len(np.unique(y_train))
         num_features = x_train.shape[1]
-        feature_probs = np.zeros((self.num_classes, num_features, 2)) # need to change the intialize
+        feature_probs = []  # need to change the initialize
         "*** YOUR CODE HERE ***"
 
-        for feature in range(num_features):
-            feature_values = x_train[:, feature]
-            feature_params = {}
-            for class_label in np.unique(y_train):
-                samples_in_class = x_train[y_train == class_label]
-                mean = np.mean(samples_in_class[:, feature])
-                std = np.std(samples_in_class[:, feature])
-                feature_probs[class_label, feature, 0] = mean
-                feature_probs[class_label, feature, 1] = std
-
-
-        def get_feature_probs(feature_index):
-            return feature_probs[feature_index]
-
-        return get_feature_probs
-
+        for c in self.classes:
+            index = y_train == c
+            cdata = x_train[index]
+            class_data = []
+            for feature in range(num_features):
+                pixel = cdata[:, feature]
+                mean = np.mean(pixel)
+                std = np.std(pixel)
+                class_data.append((mean, std))
+            feature_probs.append(class_data)
+        return feature_probs
 
     def train(self, x_train, y_train):
         """
@@ -85,6 +83,16 @@ class NaiveBayes:
         self.class_probs = self.calculate_class_probs(y_train)
         self.feature_probs = self.calculate_feature_probs(x_train, y_train)
 
+    def Gaussian(self, x, mean, std):
+
+        if std < 1e-6:
+            dev = 1e-6
+        else:
+            dev = std
+
+        exp_term = np.exp(-((x - mean) ** 2) / (2 * (dev ** 2)))
+        return exp_term / (np.sqrt(2 * np.pi) * dev)
+
     def predict(self, x_test):
         """
         Predict the class labels for test sample.
@@ -95,25 +103,28 @@ class NaiveBayes:
         Returns:
         predictions: Predicted class labels for test features.
         """
-        num_samples = x_test.shape[0]
-        num_features = x_test.shape[1]
-        predictions = np.zeros(num_samples)
         "*** YOUR CODE HERE ***"
-        for i in range(num_samples):
-            posteriors = np.zeros(self.num_classes)
+        predictions = []
 
-            for c in range(self.num_classes):
-                posterior = np.log(self.class_probs[c])
-
-                for feature in range(x_test.shape[1]):
-                    mean, std = self.feature_probs[c, feature, 0], self.feature_probs[c, feature, 1]
-                    if std == 0:  # Handle the case of zero standard deviation
-                        continue
-                    likelihood = self._pdf(x_test[i, feature], mean, std)
-                    posterior += np.log(likelihood)
-
-                posteriors[c] = posterior
-
-            predictions[i] = np.argmax(posteriors)
+        for x in tqdm(x_test, desc="Predicting"):
+            result = self._predict(x)
+            predictions.append(result)
 
         return predictions
+
+    def _predict(self, x):
+        posteriors = []
+
+        for i, c in enumerate(self.classes):
+            prior = np.log(1/self.class_probs[i])
+            posterior = 0
+            for feature, (mean, std) in enumerate(self.feature_probs[c]):
+                if std == 0:  # Handle the case of zero standard deviation
+                    continue
+                likelihood = self.Gaussian(x[feature], mean, std)
+                if likelihood == 0:
+                    likelihood = 1
+                posterior += np.log(likelihood)
+            posterior = posterior + prior
+            posteriors.append(posterior)
+        return self.classes[np.argmax(posteriors)]
