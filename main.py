@@ -4,8 +4,11 @@
 # Murdoch University
 
 from argparse import ArgumentParser
+import time
 import matplotlib.pyplot as plt
-from sklearn import metrics
+from sklearn import *
+from sklearn.preprocessing import label_binarize
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay, roc_curve, auc
 from nb_data_loader import *
 from alt_data_loader import *
 from alt_model import ALTModel
@@ -21,7 +24,76 @@ USAGE_STRING = """
                   - trains the alternative model
                   """
 
-classes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+classes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+
+
+def metrics(predicted, true):
+
+  report = classification_report(true, predicted, target_names=classes)
+  print (report)
+
+
+def missclassified(X, predicted, y_true):
+  misclassified_indices = [i for i in range(len(y_true)) if y_true[i] != predicted[i]]
+
+  # Select a subset of misclassified samples (e.g., the first 25)
+  subset_indices = misclassified_indices[:25]
+
+  # Create a grid to display the misclassified samples
+  num_rows = 5
+  num_cols = 5
+  plt.figure(figsize=(10, 10))
+
+  for i, index in enumerate(subset_indices):
+    plt.subplot(num_rows, num_cols, i + 1)
+
+    # Display the digit image (replace 'X' with your image data)
+    plt.imshow(X[index].reshape(28, 28), cmap='gray')  # Example for MNIST-like data
+    plt.title(f'True: {y_true[index]}\nPred: {predicted[index]}')  # Set titles for each subplot
+    plt.axis('off')
+
+  plt.suptitle("Examples of Misclassified Digits")
+  plt.tight_layout()
+  plt.show(block=False)
+
+
+def roc(y_pred, y_true):
+  n_classes = len(classes)
+  y_true_binarized = label_binarize(y_true, classes=list(range(n_classes)))
+
+  fpr = dict()
+  tpr = dict()
+  roc_auc = dict()
+
+  for i in range(n_classes):
+
+    y_true_class = [1 if label == i else 0 for label in y_true]
+    y_pred_class = [1 if label == i else 0 for label in y_pred]
+
+    fpr[i], tpr[i], _ = roc_curve(y_true_class, y_pred_class)
+    roc_auc[i] = auc(fpr[i], tpr[i])
+
+  plt.figure(figsize=(8, 6))
+  colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'darkorange', 'pink', 'purple']  # Define colors for each class
+
+  for i in range(n_classes):
+    plt.plot(fpr[i], tpr[i], color=colors[i], lw=2, label=f'ROC curve (class {i}) (AUC = {roc_auc[i]:.2f})')
+
+  plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+  plt.xlim([0.0, 1.0])
+  plt.ylim([0.0, 1.05])
+  plt.xlabel('False Positive Rate')
+  plt.ylabel('True Positive Rate')
+  plt.title('ROC Curves for Multi-Class Classification (0 to 9)')
+  plt.legend(loc='lower right')
+  plt.show(block=False)
+
+def conf_matrix(y_pred, y_true):
+  c_matrix = confusion_matrix(y_true, y_pred)
+  cf_display = ConfusionMatrixDisplay(confusion_matrix=c_matrix, display_labels=classes)
+  cf_display.plot()
+  plt.show()
+
 
 if __name__ == "__main__":
   parser = ArgumentParser(USAGE_STRING)
@@ -52,17 +124,10 @@ choose naive bayes
     predicted = model.predict(data.x_test)
     predicted = np.array(predicted)
 
-    f1_score = round(metrics.f1_score(data.y_test, predicted, average='weighted'), 10)
-    recall_score = round(metrics.recall_score(data.y_test, predicted, average='weighted'), 10)
-    accuracy_score = metrics.accuracy_score(data.y_test, predicted)
-    print(f'F1 Score: {f1_score}')
-    print(f'Recall Score: {recall_score}')
-    print(f'Accuracy Score: {accuracy_score*100}')
-
-    confusion_matrix = metrics.confusion_matrix(data.y_test.tolist(), predicted.tolist())
-    cf_display = metrics.ConfusionMatrixDisplay(confusion_matrix=confusion_matrix, display_labels=classes)
-    cf_display.plot()
-    plt.show()
+    metrics(predicted.tolist(), data.y_test.tolist())
+    missclassified(data.x_test, predicted.tolist(), data.y_test.tolist())
+    roc(data.y_test.tolist(), predicted)
+    conf_matrix(data.y_test.tolist(), predicted.tolist())
 
   else:
     """
@@ -97,14 +162,8 @@ choose the alternative model
     y_predicted_labels = torch.tensor(y_predicted_labels)
     y_pred = y_predicted_labels.tolist()
 
-    f1_score = round(metrics.f1_score(data.y.tolist(), y_pred, average='weighted'), 10)
-    recall_score = round(metrics.recall_score(data.y.tolist(), y_pred, average='weighted'), 10)
-    accuracy_score = metrics.accuracy_score(data.y.tolist(), y_pred)
-    print(f'F1 Score: {f1_score}')
-    print(f'Recall Score: {recall_score}')
-    print(f'Accuracy Score: {accuracy_score*100}')
+    metrics(y_pred, data.y.tolist())
+    missclassified(data.x, y_pred, data.y.tolist())
+    roc(data.y.tolist(), y_pred)
+    conf_matrix(data.y.tolist(), y_pred)
 
-    confusion_matrix = metrics.confusion_matrix(data.y.tolist(), y_pred)
-    cf_display = metrics.ConfusionMatrixDisplay(confusion_matrix=confusion_matrix, display_labels=classes)
-    cf_display.plot()
-    plt.show()
