@@ -13,7 +13,7 @@ The goal is to determine which classifier is more effective for this specific us
 The dataset consists of images, each sized 28×28 pixels, paired with a label from 0 to 9. The significant variability in the style, size, and slant of the handwritten digits makes this a challenging classification problem.
 
 ## Model Architecture and Implementation
-# Model 1: Gaussian Naïve Bayes
+### Model 1: Gaussian Naïve Bayes
 The Naïve Bayes classifier assumes feature independence (a strong assumption for image data) and uses a Gaussian distribution to model the conditional probability of features given a class.
 
 Smoothing: Uses Laplace smoothing to handle zero probabilities and ensure robust calculations of class priors.
@@ -22,7 +22,7 @@ calculate_feature_probs: Calculates the mean and standard deviation of feature v
 
 Prediction: Uses the standard Naïve Bayes formula to compute the posterior probability and selects the class with the highest probability.
 
-# Model 2: Feed-Forward Neural Network (FNN)
+### Model 2: Feed-Forward Neural Network (FNN)
 The FNN is built using the PyTorch library and designed for simplicity and speed.
 
 Input Layer:784 input features (from the flattened 28×28 image).
@@ -40,14 +40,14 @@ Output Layer: Linear layer with 128 inputs and 10 outputs (representing the 10 d
 Training: Involves training based on tunable hyperparameters like learning rate, epochs, and batch size.
 
 ## Evaluation and Results
-# Evaluation Methods
+### Evaluation Methods
 Model performance was evaluated based on:
 
 Quantitative Metrics: F1 Score, Accuracy, Precision, Recall, Weighted Average, and Macro Average (calculated per class).
 
 Visualizations: Confusion Matrix, ROC Curve, and a display of misclassified labels.
 
-## Conclusion
+### Conclusion
 The Feed-Forward Neural Network is far superior to the Gaussian Naïve Bayes model in both speed and accuracy.
 
 |Metric | Gaussian Naïve Bayes (GNB) | Feed-Forward Neural Network (FNN) | Rationale|
