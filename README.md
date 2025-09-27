@@ -1,4 +1,3 @@
-# ICT203 Assignment 2
 # Handwritten Digit Classification: Naïve Bayes vs. Feed-Forward Neural Network
 ## Project Overview
 This project focuses on the classification of handwritten digits (0-9) using a dataset of 28×28 pixel images. The primary objective is to compare the performance, strengths, and weaknesses of two distinct machine learning models:
